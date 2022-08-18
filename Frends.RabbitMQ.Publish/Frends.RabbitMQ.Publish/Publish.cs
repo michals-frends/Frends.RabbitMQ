@@ -18,13 +18,16 @@ public class RabbitMQ
     /// [Documentation](https://tasks.frends.com/tasks/frends-tasks/Frends.RabbitMQ.Publish)
     /// </summary>
     /// <param name="input">Input parameters</param>
-    /// <param name="connection">RabbitMQ connection parameters.</param>
+    /// <param name="connection">Connection parameters.</param>
     /// <returns>Object { string DataFormat, string DataString, byte[] DataByteArray, Dictionary&lt;string, string&gt; Headers }</returns>
     public static Result Publish([PropertyTab] Input input, [PropertyTab] Connection connection)
     {
         ConnectionHelper connectionHelper = new();
 
         var dataType = input.InputType.Equals(InputType.ByteArray) ? "ByteArray" : "String";
+
+        if (input.DataByteArray != null && !string.IsNullOrWhiteSpace(input.DataString)) throw new ArgumentException("Publish: Only one data type is allowed at a time. Please use either Data string or Data byte array.");
+
         var data = input.InputType.Equals(InputType.ByteArray) ? input.DataByteArray : Encoding.UTF8.GetBytes(input.DataString);
 
         if (data.Length == 0) throw new ArgumentException("Publish: Message data is missing.");
@@ -56,7 +59,7 @@ public class RabbitMQ
 
         return new Result(dataType,
                             !String.IsNullOrEmpty(input.DataString) ? input.DataString : Encoding.UTF8.GetString((byte[])input.DataByteArray),
-                            input.DataByteArray ?? Encoding.UTF8.GetBytes(input.DataString),
+                            input.DataByteArray != null ? input.DataByteArray : Encoding.UTF8.GetBytes(input.DataString),
                             headers);
     }
 
@@ -87,6 +90,8 @@ public class RabbitMQ
 
                     break;
             }
+
+            if (connection.Timeout != 0) factory.RequestedConnectionTimeout = TimeSpan.FromSeconds(connection.Timeout);
 
             connectionHelper.AMQPConnection = factory.CreateConnection();
         }

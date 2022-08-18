@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace Frends.RabbitMQ.Publish.Definitions;
@@ -88,4 +89,10 @@ public class Connection
     [UIHint(nameof(Create), "", true)]
     [DefaultValue(true)]
     public bool Durable { get; set; }
+
+    /// <summary>
+    /// Timeout setting for connection attempts. Value 0 indicates that the default value for the attempts should be used. Set value in seconds.
+    /// </summary>
+    /// <example>60</example>
+    public int Timeout { get; set; }
 }
