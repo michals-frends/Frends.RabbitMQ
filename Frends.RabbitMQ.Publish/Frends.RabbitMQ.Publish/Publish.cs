@@ -23,13 +23,10 @@ public class RabbitMQ
     public static Result Publish([PropertyTab] Input input, [PropertyTab] Connection connection)
     {
         ConnectionHelper connectionHelper = new();
-
-        var dataType = input.InputType.Equals(InputType.ByteArray) ? "ByteArray" : "String";
-
         if (input.DataByteArray != null && !string.IsNullOrWhiteSpace(input.DataString)) throw new ArgumentException("Publish: Only one data type is allowed at a time. Please use either Data string or Data byte array.");
 
+        var dataType = input.InputType.Equals(InputType.ByteArray) ? "ByteArray" : "String";
         var data = input.InputType.Equals(InputType.ByteArray) ? input.DataByteArray : Encoding.UTF8.GetBytes(input.DataString);
-
         if (data.Length == 0) throw new ArgumentException("Publish: Message data is missing.");
 
         OpenConnectionIfClosed(connectionHelper, connection);
