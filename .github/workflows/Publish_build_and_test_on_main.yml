@@ -1,0 +1,17 @@
+name: Publish build main
+
+on:
+  push:
+    branches:    
+      - main
+    paths:
+      - 'Frends.RabbitMQ.Publish/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: FrendsPlatform/FrendsTasks/.github/workflows/build_main.yml@main
+    with:
+      workdir: Frends.RabbitMQ.Publish
+    secrets:
+      badge_service_api_key: ${{ secrets.BADGE_SERVICE_API_KEY }}
