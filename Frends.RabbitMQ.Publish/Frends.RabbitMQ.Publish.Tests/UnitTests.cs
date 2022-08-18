@@ -11,7 +11,7 @@ public class UnitTests
     /// <summary>
     /// You will need access to RabbitMQ queue, you can create it e.g. by running
     /// docker run -d --hostname my-rabbit -p 5672:5672 -p 8080:1567 -e RABBITMQ_DEFAULT_USER=agent -e RABBITMQ_DEFAULT_PASS=agent123  rabbitmq:3.7-management
-    /// In that case URI would be amqp://agent:agent123@localhost:5672
+    /// In that case URI would be amqp://agent:agent123@localhost:5672 
     /// </summary>
 
     private const string TestUri = "amqp://agent:agent123@localhost:5672";
