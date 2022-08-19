@@ -19,7 +19,6 @@ public enum AuthenticationMethod
     /// <summary>
     /// Connect with URI.
     /// </summary>
-    /// <example>amqp://foo:bar@localhost:1234</example>
     URI,
 
     /// <summary>

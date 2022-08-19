@@ -12,13 +12,17 @@ You can install the Task via frends UI Task View or you can find the NuGet packa
 
 ## Building
 
+
 Rebuild the project
 
 `dotnet build`
 
 Run tests
 
+You will need access to RabbitMQ queue. Create command for docker: docker run -d --hostname my-rabbit -p 5672:5672 -p 8080:1567 -e RABBITMQ_DEFAULT_USER=agent -e RABBITMQ_DEFAULT_PASS=agent123  rabbitmq:3.7-management
+
 `dotnet test`
+
 
 Create a NuGet package
 

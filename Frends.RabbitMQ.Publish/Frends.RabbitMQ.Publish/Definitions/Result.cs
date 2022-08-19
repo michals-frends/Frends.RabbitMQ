@@ -28,6 +28,7 @@ public class Result
     /// <summary>
     /// Headers of the published message.
     /// </summary>
+    /// <example>foo, bar</example>
     public Dictionary<string, string> Headers { get; private set; }
 
     internal Result(string dataFormat, string dataString, byte[] dataByteArray, Dictionary<string, string> headers)
