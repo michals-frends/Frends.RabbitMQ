@@ -18,7 +18,7 @@ public class RabbitMQ
     /// [Documentation](https://tasks.frends.com/tasks/frends-tasks/Frends.RabbitMQ.Read)
     /// </summary>
     /// <param name="connection">Connection parameters.</param>
-    /// <returns>Object { string Data, Dictionary&lt;string, string&gt; Headers, uint MessagesCount, ulong DeliveryTag } MessagesBase64, Object { string Data, Dictionary&lt;string, string&gt; Headers, uint MessagesCount, ulong DeliveryTag } MessageUTF8 </returns>
+    /// <returns>Object { bool Success, Object { string Data, Dictionary&lt;string, string&gt; Headers, uint MessagesCount, ulong DeliveryTag } MessagesBase64, Object { string Data, Dictionary&lt;string, string&gt; Headers, uint MessagesCount, ulong DeliveryTag } MessageUTF8 }</returns>
     public static Result Read([PropertyTab] Connection connection)
     {
         var connectionHelper = new ConnectionHelper();
@@ -81,7 +81,7 @@ public class RabbitMQ
                 AcknowledgeMessage(ackType, message.DeliveryTag, connectionHelper);
         }
 
-        return new Result(baseList, stringList);
+        return new Result(true, baseList, stringList);
     }
 
     private static bool AcknowledgeMessage(ManualAckType ackType, ulong deliveryTag, ConnectionHelper connectionHelper)
