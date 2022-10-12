@@ -61,7 +61,7 @@ public class UnitTests
         Publish(connection, 1);
         var result = RabbitMQ.Read(connection);
 
-        Assert.IsTrue(result.MessagesBase64.Count == 1 && result.MessageUTF8.Count == 1);
+        Assert.IsTrue(result.MessagesBase64.Count == 1 && result.MessageUTF8.Count == 1 && result.Success.Equals(true));
         Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0"))));
 
         Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("application id"))));
@@ -106,7 +106,7 @@ public class UnitTests
         Publish(connection, 2);
         var result = RabbitMQ.Read(connection);
         
-        Assert.IsTrue(result.MessagesBase64.Count > 1 && result.MessageUTF8.Count > 1);
+        Assert.IsTrue(result.MessagesBase64.Count > 1 && result.MessageUTF8.Count > 1 && result.Success.Equals(true));
         Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0"))) 
             && result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDE=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 1"))));
 
@@ -150,7 +150,7 @@ public class UnitTests
         Publish(connection, 1);
         var result = RabbitMQ.Read(connection);
 
-        Assert.IsTrue(result.MessagesBase64.Count == 1 && result.MessageUTF8.Count == 1);
+        Assert.IsTrue(result.MessagesBase64.Count == 1 && result.MessageUTF8.Count == 1 && result.Success.Equals(true));
         Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0"))));
 
         Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("application id"))));
