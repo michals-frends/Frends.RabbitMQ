@@ -10,7 +10,7 @@ public class Result
     /// <summary>
     /// Read status. There was no messages to read if MessageUTF8 and MessagesBase64 are empty but Success=true.
     /// </summary>
-    public bool Success { get; set; }
+    public bool Success { get; private set; }
 
     /// <summary>
     /// Message in Base64 format.
