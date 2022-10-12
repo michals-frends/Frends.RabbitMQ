@@ -18,7 +18,7 @@ public class Input
     /// </summary>
     /// <example>54 65 73 74 20 6d 65 73 73 61 67 65</example>
     [UIHint(nameof(InputType), "", InputType.ByteArray)]
-    public byte[] DataByteArray { get; set; } = null;
+    public byte[] DataByteArray { get; set; }
 
     /// <summary>
     /// Data payload in string format.
