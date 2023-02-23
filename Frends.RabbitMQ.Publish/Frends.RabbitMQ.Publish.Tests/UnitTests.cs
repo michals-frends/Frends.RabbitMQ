@@ -314,7 +314,7 @@ public class UnitTests
             readValues.Tag = rcvMessage.DeliveryTag;
 
             var data = new Dictionary<string, string>();
-            if(rcvMessage.BasicProperties.Headers != null)
+            if (rcvMessage.BasicProperties.Headers != null)
             {
                 foreach (var head in rcvMessage.BasicProperties.Headers)
                 {
