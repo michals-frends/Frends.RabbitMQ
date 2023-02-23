@@ -38,9 +38,6 @@ public class UnitTests
         channel.ExchangeDelete("exchange", ifUnused: false);
     }
 
-    /// <summary>
-    /// Connect with hostname and publish as string.
-    /// </summary>
     [TestMethod]
     public void TestPublishAsString()
     {
@@ -101,9 +98,6 @@ public class UnitTests
             && result.Headers.ContainsKey("Custom-Header") && result.Headers.ContainsValue("custom header"));
     }
 
-    /// <summary>
-    /// Connect with hostname and publish as byte array.
-    /// </summary>
     [TestMethod]
     public void TestPublishAsByteArray()
     {
@@ -164,9 +158,75 @@ public class UnitTests
             && result.Headers.ContainsKey("Custom-Header") && result.Headers.ContainsValue("custom header"));
     }
 
-    /// <summary>
-    /// Connect with URI and publish as string.
-    /// </summary>
+    [TestMethod]
+    public void TestPublishAsString_WithoutHeaders()
+    {
+        Connection connection = new()
+        {
+            Host = TestHost,
+            Username = "agent",
+            Password = "agent123",
+            RoutingKey = "queue",
+            QueueName = "queue",
+            Create = false,
+            Durable = false,
+            AutoDelete = false,
+            AuthenticationMethod = AuthenticationMethod.Host,
+            ExchangeName = ""
+        };
+
+        Input input = new()
+        {
+            DataString = "test message",
+            InputType = InputType.String,
+            Headers = null
+        };
+
+        var readValues = new ReadValues();
+        var result = RabbitMQ.Publish(input, connection);
+        ReadMessage(readValues, connection);
+        Assert.IsNotNull(readValues.Message);
+        Assert.AreEqual("test message", readValues.Message);
+        Assert.AreEqual("String", result.DataFormat);
+        Assert.AreEqual("test message", result.DataString);
+        Assert.IsTrue(result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
+        Assert.AreEqual(0, result.Headers.Count);
+    }
+
+    [TestMethod]
+    public void TestPublishAsByteArray_WithoutHeaders()
+    {
+        Connection connection = new()
+        {
+            Host = TestHost,
+            Username = "agent",
+            Password = "agent123",
+            RoutingKey = "queue",
+            QueueName = "queue",
+            Create = false,
+            Durable = false,
+            AutoDelete = false,
+            AuthenticationMethod = AuthenticationMethod.Host,
+            ExchangeName = ""
+        };
+
+        Input input = new()
+        {
+            DataByteArray = Encoding.UTF8.GetBytes("test message"),
+            InputType = InputType.ByteArray,
+            Headers = null
+        };
+
+        var readValues = new ReadValues();
+        var result = RabbitMQ.Publish(input, connection);
+        ReadMessage(readValues, connection);
+        Assert.IsNotNull(readValues.Message);
+        Assert.AreEqual("test message", readValues.Message);
+        Assert.AreEqual("ByteArray", result.DataFormat);
+        Assert.AreEqual("test message", result.DataString);
+        Assert.IsTrue(result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
+    }
+
     [TestMethod]
     public void TestURIConnection()
     {
@@ -254,12 +314,15 @@ public class UnitTests
             readValues.Tag = rcvMessage.DeliveryTag;
 
             var data = new Dictionary<string, string>();
-            foreach (var head in rcvMessage.BasicProperties.Headers)
+            if(rcvMessage.BasicProperties.Headers != null)
             {
-                var convert = Encoding.UTF8.GetString((byte[])head.Value);
-                data.TryAdd(head.Key, convert);
+                foreach (var head in rcvMessage.BasicProperties.Headers)
+                {
+                    var convert = Encoding.UTF8.GetString((byte[])head.Value);
+                    data.TryAdd(head.Key, convert);
+                }
+                readValues.Headers = data;
             }
-            readValues.Headers = data;
         }
     }
 
