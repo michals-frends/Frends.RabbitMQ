@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Loader;
 using System.Text;
 using Frends.RabbitMQ.Publish.Definitions;
 using RabbitMQ.Client;
@@ -13,6 +15,15 @@ namespace Frends.RabbitMQ.Publish;
 /// </summary>
 public class RabbitMQ
 {
+    /// Mem cleanup.
+    static RabbitMQ()
+    {
+        var currentAssembly = Assembly.GetExecutingAssembly();
+        var currentContext = AssemblyLoadContext.GetLoadContext(currentAssembly);
+        if (currentContext != null)
+            currentContext.Unloading += OnPluginUnloadingRequested;
+    }
+
     /// <summary>
     /// Publish message to RabbitMQ queue in UTF8 or byte array format.
     /// [Documentation](https://tasks.frends.com/tasks/frends-tasks/Frends.RabbitMQ.Publish)
@@ -45,8 +56,9 @@ public class RabbitMQ
 
         var headers = new Dictionary<string, string>();
 
-        foreach (var head in basicProperties.Headers)
-            headers.Add(head.Key.ToString(), head.Value.ToString());
+        if (basicProperties.Headers != null)
+            foreach (var head in basicProperties.Headers)
+                headers.Add(head.Key.ToString(), head.Value.ToString());
 
         connectionHelper.AMQPModel.BasicPublish(exchange: connection.ExchangeName,
                                 routingKey: connection.RoutingKey,
@@ -174,5 +186,10 @@ public class RabbitMQ
 
         if (messageHeaders.Any())
             basicProperties.Headers = messageHeaders;
+    }
+
+    private static void OnPluginUnloadingRequested(AssemblyLoadContext obj)
+    {
+        obj.Unloading -= OnPluginUnloadingRequested;
     }
 }
