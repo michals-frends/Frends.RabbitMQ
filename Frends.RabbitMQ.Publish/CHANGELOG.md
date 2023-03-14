@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.1.1] - 2023-03-14
+### Fixed
+- Fixed issue with connections left open after task's execution by implementing IDisposable in Connectionhelper class.
+
 ## [1.1.0] - 2023-02-23
 ### Fixed
 - Fixed NullReferenceException when no headers are defined for the input object.

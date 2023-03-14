@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.Loader;
 using System.Text;
 using Frends.RabbitMQ.Publish.Definitions;
 using RabbitMQ.Client;
@@ -15,15 +13,6 @@ namespace Frends.RabbitMQ.Publish;
 /// </summary>
 public class RabbitMQ
 {
-    /// Mem cleanup.
-    static RabbitMQ()
-    {
-        var currentAssembly = Assembly.GetExecutingAssembly();
-        var currentContext = AssemblyLoadContext.GetLoadContext(currentAssembly);
-        if (currentContext != null)
-            currentContext.Unloading += OnPluginUnloadingRequested;
-    }
-
     /// <summary>
     /// Publish message to RabbitMQ queue in UTF8 or byte array format.
     /// [Documentation](https://tasks.frends.com/tasks/frends-tasks/Frends.RabbitMQ.Publish)
@@ -33,7 +22,7 @@ public class RabbitMQ
     /// <returns>Object { string DataFormat, string DataString, byte[] DataByteArray, Dictionary&lt;string, string&gt; Headers }</returns>
     public static Result Publish([PropertyTab] Input input, [PropertyTab] Connection connection)
     {
-        ConnectionHelper connectionHelper = new();
+        using var connectionHelper = new ConnectionHelper();
 
         var dataType = input.InputType.Equals(InputType.ByteArray) ? "ByteArray" : "String";
         var data = input.InputType.Equals(InputType.ByteArray) ? input.DataByteArray : Encoding.UTF8.GetBytes(input.DataString);
@@ -66,7 +55,7 @@ public class RabbitMQ
                                 body: data);
 
         return new Result(dataType,
-                            !String.IsNullOrEmpty(input.DataString) ? input.DataString : Encoding.UTF8.GetString((byte[])input.DataByteArray),
+                            !string.IsNullOrEmpty(input.DataString) ? input.DataString : Encoding.UTF8.GetString((byte[])input.DataByteArray),
                             input.DataByteArray != null ? input.DataByteArray : Encoding.UTF8.GetBytes(input.DataString),
                             headers);
     }
@@ -75,7 +64,10 @@ public class RabbitMQ
     {
         // Close connection if hostname has changed.
         if (IsConnectionHostNameChanged(connectionHelper, connection))
+        {
             connectionHelper.AMQPModel.Close();
+            connectionHelper.AMQPConnection.Close();
+        }
 
         if (connectionHelper.AMQPConnection == null || connectionHelper.AMQPConnection.IsOpen == false)
         {
@@ -118,9 +110,9 @@ public class RabbitMQ
         {
             case AuthenticationMethod.URI:
                 var newUri = new Uri(connection.Host);
-                return (connectionHelper.AMQPConnection.Endpoint.HostName != newUri.Host);
+                return (!connectionHelper.AMQPConnection.Endpoint.HostName.Equals(newUri.Host));
             case AuthenticationMethod.Host:
-                return (connectionHelper.AMQPConnection.Endpoint.HostName != connection.Host);
+                return (!connectionHelper.AMQPConnection.Endpoint.HostName.Equals(connection.Host));
             default:
                 throw new ArgumentException($"IsConnectionHostNameChanged: AuthenticationMethod missing.");
         }
@@ -186,10 +178,5 @@ public class RabbitMQ
 
         if (messageHeaders.Any())
             basicProperties.Headers = messageHeaders;
-    }
-
-    private static void OnPluginUnloadingRequested(AssemblyLoadContext obj)
-    {
-        obj.Unloading -= OnPluginUnloadingRequested;
     }
 }
