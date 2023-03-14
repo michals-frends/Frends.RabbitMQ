@@ -1,11 +1,12 @@
 ﻿using RabbitMQ.Client;
+using System;
 
 namespace Frends.RabbitMQ.Read.Definitions;
 
 /// <summary>
 /// AMQP parameters.
 /// </summary>
-public class ConnectionHelper
+internal class ConnectionHelper : IDisposable
 {
     /// <summary>
     /// AMQP connection parameters.
@@ -16,4 +17,21 @@ public class ConnectionHelper
     /// AMQP model parameters.
     /// </summary>
     public IModel AMQPModel { get; set; } = null;
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            AMQPModel?.Close();
+            AMQPModel?.Dispose();
+            AMQPConnection?.Close();
+            AMQPConnection?.Dispose();
+        }
+    }
 }

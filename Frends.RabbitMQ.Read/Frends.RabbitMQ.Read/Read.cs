@@ -21,7 +21,7 @@ public class RabbitMQ
     /// <returns>Object { bool Success, Object { string Data, Dictionary&lt;string, string&gt; Headers, uint MessagesCount, ulong DeliveryTag } MessagesBase64, Object { string Data, Dictionary&lt;string, string&gt; Headers, uint MessagesCount, ulong DeliveryTag } MessageUTF8 }</returns>
     public static Result Read([PropertyTab] Connection connection)
     {
-        var connectionHelper = new ConnectionHelper();
+        using var connectionHelper = new ConnectionHelper();
         var baseList = new List<Message>();
         var stringList = new List<Message>();
 
@@ -133,7 +133,14 @@ public class RabbitMQ
         .ToDictionary(h => h.Key, h => h.Value);
 
         if (basicProperties.IsHeadersPresent())
-            basicProperties.Headers.ToList().ForEach(x => allHeaders[x.Key] = Encoding.UTF8.GetString(x.Value as byte[]));
+            foreach (var header in basicProperties.Headers.ToList())
+            {
+                if (header.Value.GetType() == typeof(byte[]))
+                    allHeaders[header.Key] = Encoding.UTF8.GetString(header.Value as byte[]);
+                else 
+                    allHeaders[header.Key] = header.Value.ToString();
+            }
+            //basicProperties.Headers.ToList().ForEach(x => allHeaders[x.Key] = Encoding.UTF8.GetString(x.Value as byte[]));
 
         return allHeaders;
     }

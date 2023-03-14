@@ -1,4 +1,5 @@
 using Frends.RabbitMQ.Read.Definitions;
+using Frends.RabbitMQ.Read.Tests.Lib;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RabbitMQ.Client;
 using System.Text;
@@ -10,8 +11,9 @@ public class UnitTests
 {
     /// <summary>
     /// You will need access to RabbitMQ queue, you can create it e.g. by running
-    /// docker run -d --hostname my-rabbit -p 5672:5672 -p 8080:1567 -e RABBITMQ_DEFAULT_USER=agent -e RABBITMQ_DEFAULT_PASS=agent123  rabbitmq:3.7-management
+    /// docker run -d --hostname my-rabbit -p 5672:5672 -p 8080:1567 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=agent -e RABBITMQ_DEFAULT_PASS=agent123  rabbitmq:3.9-management
     /// In that case URI would be amqp://agent:agent123@localhost:5672 
+    /// Access UI from http://localhost:15672 username: agent, password: agent123
     /// </summary>
 
     private const string TestUri = "amqp://agent:agent123@localhost:5672";
@@ -105,7 +107,11 @@ public class UnitTests
 
         Publish(connection, 2);
         var result = RabbitMQ.Read(connection);
-        
+
+        var test1 = result.MessagesBase64.Count;
+        var test2 = result.MessageUTF8.Count;
+
+
         Assert.IsTrue(result.MessagesBase64.Count > 1 && result.MessageUTF8.Count > 1 && result.Success.Equals(true));
         Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0"))) 
             && result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDE=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 1"))));
@@ -172,18 +178,18 @@ public class UnitTests
         Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("custom header"))));
     }
 
-    public static void Publish(Connection connection, int messageCount)
+    public static void Publish(Connection connection, int messageCount, Dictionary<string, object>? args = null)
     {
         ConnectionHelper connectionHelper = new();
         var message = "Test message";
 
-        OpenConnectionIfClosed(connectionHelper, connection);
+        Helper.OpenConnectionIfClosed(connectionHelper, connection);
 
         connectionHelper.AMQPModel.QueueDeclare(queue: connection.QueueName,
                                     durable: false,
                                     exclusive: false,
                                     autoDelete: false,
-                                    arguments: null);
+                                    arguments: args);
 
         var basicProperties = connectionHelper.AMQPModel.CreateBasicProperties();
         basicProperties.Persistent = false;
@@ -206,58 +212,5 @@ public class UnitTests
                 routingKey: connection.RoutingKey,
                 basicProperties: basicProperties,
                 body: Encoding.UTF8.GetBytes(message + " " + i));
-    }
-
-    private static void OpenConnectionIfClosed(ConnectionHelper connectionHelper, Connection connection)
-    {
-        if (IsConnectionHostNameChanged(connectionHelper, connection))
-            connectionHelper.AMQPModel.Close();
-
-        if (connectionHelper.AMQPConnection == null || connectionHelper.AMQPConnection.IsOpen == false)
-        {
-            var factory = new ConnectionFactory();
-
-            switch (connection.AuthenticationMethod)
-            {
-                case AuthenticationMethod.URI:
-                    factory.Uri = new Uri(connection.Host);
-                    break;
-                case AuthenticationMethod.Host:
-                    if (!string.IsNullOrWhiteSpace(connection.Username) || !string.IsNullOrWhiteSpace(connection.Password))
-                    {
-                        factory.UserName = connection.Username;
-                        factory.Password = connection.Password;
-                    }
-                    factory.HostName = connection.Host;
-
-                    if (connection.Port != 0) factory.Port = connection.Port;
-
-                    break;
-            }
-
-            if (connection.Timeout != 0) factory.RequestedConnectionTimeout = TimeSpan.FromSeconds(connection.Timeout);
-
-            connectionHelper.AMQPConnection = factory.CreateConnection();
-        }
-
-        if (connectionHelper.AMQPModel == null || connectionHelper.AMQPModel.IsClosed)
-            connectionHelper.AMQPModel = connectionHelper.AMQPConnection.CreateModel();
-    }
-
-    private static bool IsConnectionHostNameChanged(ConnectionHelper connectionHelper, Connection connection)
-    {
-        if (connectionHelper.AMQPConnection == null || connectionHelper.AMQPConnection.IsOpen == false)
-            return false;
-
-        switch (connection.AuthenticationMethod)
-        {
-            case AuthenticationMethod.URI:
-                var newUri = new Uri(connection.Host);
-                return (connectionHelper.AMQPConnection.Endpoint.HostName != newUri.Host);
-            case AuthenticationMethod.Host:
-                return (connectionHelper.AMQPConnection.Endpoint.HostName != connection.Host);
-            default:
-                throw new ArgumentException($"IsConnectionHostNameChanged: AuthenticationMethod missing.");
-        }
     }
 }
