@@ -33,7 +33,7 @@ public class RabbitMQ
         if (connection.Create)
         {
             // Create args dictionary for quorum queue arguments
-            var args =  new Dictionary<string, object>();
+            var args = new Dictionary<string, object>();
             args.Add("x-queue-type", "quorum");
 
             connectionHelper.AMQPModel.QueueDeclare(queue: connection.QueueName,
