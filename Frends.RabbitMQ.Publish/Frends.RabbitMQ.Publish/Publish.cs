@@ -32,11 +32,23 @@ public class RabbitMQ
 
         if (connection.Create)
         {
+            // Create args dictionary for quorum queue arguments
+            var args =  new Dictionary<string, object>();
+            args.Add("x-queue-type", "quorum");
+
             connectionHelper.AMQPModel.QueueDeclare(queue: connection.QueueName,
-                                    durable: connection.Durable,
-                                    exclusive: false,
-                                    autoDelete: connection.AutoDelete,
-                                    arguments: null);
+                durable: connection.Durable,
+                exclusive: false,
+                autoDelete: connection.AutoDelete,
+                arguments: connection.Quorum ? args : null);
+
+            if (!string.IsNullOrEmpty(connection.ExchangeName))
+            {
+                connectionHelper.AMQPModel.QueueBind(queue: connection.QueueName,
+                    exchange: connection.ExchangeName,
+                    routingKey: connection.RoutingKey,
+                    arguments: null);
+            }
         }
 
         var basicProperties = connectionHelper.AMQPModel.CreateBasicProperties();
@@ -50,14 +62,14 @@ public class RabbitMQ
                 headers.Add(head.Key.ToString(), head.Value.ToString());
 
         connectionHelper.AMQPModel.BasicPublish(exchange: connection.ExchangeName,
-                                routingKey: connection.RoutingKey,
-                                basicProperties: basicProperties,
-                                body: data);
+            routingKey: connection.RoutingKey,
+            basicProperties: basicProperties,
+            body: data);
 
         return new Result(dataType,
-                            !string.IsNullOrEmpty(input.DataString) ? input.DataString : Encoding.UTF8.GetString((byte[])input.DataByteArray),
-                            input.DataByteArray != null ? input.DataByteArray : Encoding.UTF8.GetBytes(input.DataString),
-                            headers);
+            !string.IsNullOrEmpty(input.DataString) ? input.DataString : Encoding.UTF8.GetString(input.DataByteArray),
+            input.DataByteArray ?? Encoding.UTF8.GetBytes(input.DataString),
+            headers);
     }
 
     private static void OpenConnectionIfClosed(ConnectionHelper connectionHelper, Connection connection)

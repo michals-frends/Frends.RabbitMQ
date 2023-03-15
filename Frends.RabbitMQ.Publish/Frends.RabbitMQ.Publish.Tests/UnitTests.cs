@@ -10,8 +10,9 @@ public class UnitTests
 {
     /// <summary>
     /// You will need access to RabbitMQ queue, you can create it e.g. by running
-    /// docker run -d --hostname my-rabbit -p 5672:5672 -p 8080:1567 -e RABBITMQ_DEFAULT_USER=agent -e RABBITMQ_DEFAULT_PASS=agent123  rabbitmq:3.7-management
+    /// docker run -d --hostname my-rabbit -p 5672:5672 -p 8080:1567 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=agent -e RABBITMQ_DEFAULT_PASS=agent123 rabbitmq:3.9-management
     /// In that case URI would be amqp://agent:agent123@localhost:5672 
+    /// Access UI from http://localhost:15672 username: agent, password: agent123
     /// </summary>
 
     private const string TestUri = "amqp://agent:agent123@localhost:5672";
@@ -72,9 +73,9 @@ public class UnitTests
             }
         };
 
-        var readValues = new ReadValues();
+        var readValues = new Helper.ReadValues();
         var result = RabbitMQ.Publish(input, connection);
-        ReadMessage(readValues, connection);
+        Helper.ReadMessage(readValues, connection);
 
         Assert.IsTrue(!string.IsNullOrEmpty(readValues.Message) && readValues.Message.Equals("test message"));
         Assert.IsTrue(result.DataFormat.Equals("String")
@@ -132,9 +133,9 @@ public class UnitTests
             }
         };
 
-        var readValues = new ReadValues();
+        var readValues = new Helper.ReadValues();
         var result = RabbitMQ.Publish(input, connection);
-        ReadMessage(readValues, connection);
+        Helper.ReadMessage(readValues, connection);
 
         Assert.IsTrue(!string.IsNullOrEmpty(readValues.Message) && readValues.Message.Equals("test message"));
         Assert.IsTrue(result.DataFormat.Equals("ByteArray")
@@ -182,9 +183,9 @@ public class UnitTests
             Headers = null
         };
 
-        var readValues = new ReadValues();
+        var readValues = new Helper.ReadValues();
         var result = RabbitMQ.Publish(input, connection);
-        ReadMessage(readValues, connection);
+        Helper.ReadMessage(readValues, connection);
         Assert.IsNotNull(readValues.Message);
         Assert.AreEqual("test message", readValues.Message);
         Assert.AreEqual("String", result.DataFormat);
@@ -217,9 +218,9 @@ public class UnitTests
             Headers = null
         };
 
-        var readValues = new ReadValues();
+        var readValues = new Helper.ReadValues();
         var result = RabbitMQ.Publish(input, connection);
-        ReadMessage(readValues, connection);
+        Helper.ReadMessage(readValues, connection);
         Assert.IsNotNull(readValues.Message);
         Assert.AreEqual("test message", readValues.Message);
         Assert.AreEqual("ByteArray", result.DataFormat);
@@ -258,9 +259,9 @@ public class UnitTests
             }
         };
 
-        var readValues = new ReadValues();
+        var readValues = new Helper.ReadValues();
         var result = RabbitMQ.Publish(input, connection);
-        ReadMessage(readValues, connection);
+        Helper.ReadMessage(readValues, connection);
 
         Assert.IsTrue(!string.IsNullOrEmpty(readValues.Message) && readValues.Message.Equals("test message"));
         Assert.IsTrue(result.DataFormat.Equals("String")
@@ -282,54 +283,5 @@ public class UnitTests
             && result.Headers.ContainsKey("X-MessageId") && result.Headers.ContainsValue("message id"));
         Assert.IsTrue(readValues.Headers.ContainsKey("Custom-Header") && readValues.Headers.ContainsValue("custom header")
             && result.Headers.ContainsKey("Custom-Header") && result.Headers.ContainsValue("custom header"));
-    }
-
-    private static void ReadMessage(ReadValues readValues, Connection connection)
-    {
-        var factory = new ConnectionFactory();
-
-        switch (connection.AuthenticationMethod)
-        {
-            case AuthenticationMethod.URI:
-                factory.Uri = new Uri(connection.Host);
-                break;
-            case AuthenticationMethod.Host:
-                if (!string.IsNullOrWhiteSpace(connection.Username) || !string.IsNullOrWhiteSpace(connection.Password))
-                {
-                    factory.UserName = connection.Username;
-                    factory.Password = connection.Password;
-                }
-                factory.HostName = connection.Host;
-                break;
-        }
-
-        IConnection _connection = factory.CreateConnection();
-        IModel _model = _connection.CreateModel();
-
-        var rcvMessage = _model.BasicGet(connection.QueueName, true);
-        if (rcvMessage != null)
-        {
-            var message = Encoding.UTF8.GetString(rcvMessage.Body.ToArray());
-            readValues.Message = message;
-            readValues.Tag = rcvMessage.DeliveryTag;
-
-            var data = new Dictionary<string, string>();
-            if (rcvMessage.BasicProperties.Headers != null)
-            {
-                foreach (var head in rcvMessage.BasicProperties.Headers)
-                {
-                    var convert = Encoding.UTF8.GetString((byte[])head.Value);
-                    data.TryAdd(head.Key, convert);
-                }
-                readValues.Headers = data;
-            }
-        }
-    }
-
-    internal class ReadValues
-    {
-        public string Message { get; set; } = "";
-        public ulong Tag { get; set; }
-        public Dictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
     }
 }

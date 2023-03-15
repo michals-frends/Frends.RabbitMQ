@@ -82,12 +82,21 @@ public class Connection
     public bool AutoDelete { get; set; }
 
     /// <summary>
-    /// Should this queue will survive a broker restart?
+    /// Should this queue will survive a broker restart? 
+    /// Note that Quorum queue supports only Durable settings.
     /// </summary>
     /// <example>true</example>
     [UIHint(nameof(Create), "", true)]
     [DefaultValue(true)]
     public bool Durable { get; set; }
+
+    /// <summary>
+    /// Should this queue be a quorum queue.
+    /// </summary>
+    /// <example>true</example>
+    [UIHint(nameof(Create), "", true)]
+    [DefaultValue(true)]
+    public bool Quorum { get; set; }
 
     /// <summary>
     /// Timeout setting for connection attempts. Value 0 indicates that the default value for the attempts should be used. Set value in seconds.
