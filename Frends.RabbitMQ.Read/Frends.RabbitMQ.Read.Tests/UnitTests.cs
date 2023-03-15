@@ -44,7 +44,7 @@ public class UnitTests
     /// Connect with hostname and read single message.
     /// </summary>
     [TestMethod]
-    public void TestReadSingleMessageWithHost()
+    public void TestReadSingleMessageWithHostAutoNack()
     {
         Connection connection = new()
         {
@@ -89,7 +89,7 @@ public class UnitTests
     /// Connect with hostname and read multiple messages.
     /// </summary>
     [TestMethod]
-    public void TestReadMultipleMessagesWithHost()
+    public void TestReadMultipleMessagesWithHostAutoNack()
     {
         Connection connection = new()
         {
@@ -113,7 +113,7 @@ public class UnitTests
 
 
         Assert.IsTrue(result.MessagesBase64.Count > 1 && result.MessageUTF8.Count > 1 && result.Success.Equals(true));
-        Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0"))) 
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0")))
             && result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDE=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 1"))));
 
         Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("application id"))));
@@ -139,7 +139,7 @@ public class UnitTests
     /// Connect with URI and read single message.
     /// </summary>
     [TestMethod]
-    public void TestReadSingleMessageWithURI()
+    public void TestReadSingleMessageWithURIAutoNack()
     {
         Connection connection = new()
         {
@@ -150,6 +150,411 @@ public class UnitTests
             ExchangeName = null,
 
             AutoAck = ReadAckType.AutoAck,
+            ReadMessageCount = 1,
+        };
+
+        Publish(connection, 1);
+        var result = RabbitMQ.Read(connection);
+
+        Assert.IsTrue(result.MessagesBase64.Count == 1 && result.MessageUTF8.Count == 1 && result.Success.Equals(true));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0"))));
+
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("custom header"))));
+
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("custom header"))));
+    }
+
+    [TestMethod]
+    public void TestReadSingleMessageWithHostAutoNackAndRequeue()
+    {
+        Connection connection = new()
+        {
+            Host = TestHost,
+            Username = "agent",
+            Password = "agent123",
+            RoutingKey = "queue",
+            QueueName = "queue",
+            AuthenticationMethod = AuthenticationMethod.Host,
+            ExchangeName = null,
+
+            AutoAck = ReadAckType.AutoNackAndRequeue,
+            ReadMessageCount = 1,
+        };
+
+        Publish(connection, 1);
+        var result = RabbitMQ.Read(connection);
+
+        Assert.IsTrue(result.MessagesBase64.Count == 1 && result.MessageUTF8.Count == 1 && result.Success.Equals(true));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0"))));
+
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("custom header"))));
+
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("custom header"))));
+    }
+
+    /// <summary>
+    /// Connect with hostname and read multiple messages.
+    /// </summary>
+    [TestMethod]
+    public void TestReadMultipleMessagesWithHostAutoNackAndRequeue()
+    {
+        Connection connection = new()
+        {
+            Host = TestHost,
+            Username = "agent",
+            Password = "agent123",
+            RoutingKey = "queue",
+            QueueName = "queue",
+            AuthenticationMethod = AuthenticationMethod.Host,
+            ExchangeName = null,
+
+            AutoAck = ReadAckType.AutoNackAndRequeue,
+            ReadMessageCount = 2,
+        };
+
+        Publish(connection, 2);
+        var result = RabbitMQ.Read(connection);
+
+        var test1 = result.MessagesBase64.Count;
+        var test2 = result.MessageUTF8.Count;
+
+
+        Assert.IsTrue(result.MessagesBase64.Count > 1 && result.MessageUTF8.Count > 1 && result.Success.Equals(true));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0")))
+            && result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDE=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 1"))));
+
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("custom header"))));
+
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("custom header"))));
+    }
+
+    /// <summary>
+    /// Connect with URI and read single message.
+    /// </summary>
+    [TestMethod]
+    public void TestReadSingleMessageWithURIAutoNackAndRequeue()
+    {
+        Connection connection = new()
+        {
+            Host = TestUri,
+            RoutingKey = "queue",
+            QueueName = "queue",
+            AuthenticationMethod = AuthenticationMethod.URI,
+            ExchangeName = null,
+
+            AutoAck = ReadAckType.AutoNackAndRequeue,
+            ReadMessageCount = 1,
+        };
+
+        Publish(connection, 1);
+        var result = RabbitMQ.Read(connection);
+
+        Assert.IsTrue(result.MessagesBase64.Count == 1 && result.MessageUTF8.Count == 1 && result.Success.Equals(true));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0"))));
+
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("custom header"))));
+
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("custom header"))));
+    }
+
+    [TestMethod]
+    public void TestReadSingleMessageWithHostAutoReject()
+    {
+        Connection connection = new()
+        {
+            Host = TestHost,
+            Username = "agent",
+            Password = "agent123",
+            RoutingKey = "queue",
+            QueueName = "queue",
+            AuthenticationMethod = AuthenticationMethod.Host,
+            ExchangeName = null,
+
+            AutoAck = ReadAckType.AutoReject,
+            ReadMessageCount = 1,
+        };
+
+        Publish(connection, 1);
+        var result = RabbitMQ.Read(connection);
+
+        Assert.IsTrue(result.MessagesBase64.Count == 1 && result.MessageUTF8.Count == 1 && result.Success.Equals(true));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0"))));
+
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("custom header"))));
+
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("custom header"))));
+    }
+
+    /// <summary>
+    /// Connect with hostname and read multiple messages.
+    /// </summary>
+    [TestMethod]
+    public void TestReadMultipleMessagesWithHostAutoReject()
+    {
+        Connection connection = new()
+        {
+            Host = TestHost,
+            Username = "agent",
+            Password = "agent123",
+            RoutingKey = "queue",
+            QueueName = "queue",
+            AuthenticationMethod = AuthenticationMethod.Host,
+            ExchangeName = null,
+
+            AutoAck = ReadAckType.AutoReject,
+            ReadMessageCount = 2,
+        };
+
+        Publish(connection, 2);
+        var result = RabbitMQ.Read(connection);
+
+        var test1 = result.MessagesBase64.Count;
+        var test2 = result.MessageUTF8.Count;
+
+
+        Assert.IsTrue(result.MessagesBase64.Count > 1 && result.MessageUTF8.Count > 1 && result.Success.Equals(true));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0")))
+            && result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDE=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 1"))));
+
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("custom header"))));
+
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("custom header"))));
+    }
+
+    /// <summary>
+    /// Connect with URI and read single message.
+    /// </summary>
+    [TestMethod]
+    public void TestReadSingleMessageWithURIAutoReject()
+    {
+        Connection connection = new()
+        {
+            Host = TestUri,
+            RoutingKey = "queue",
+            QueueName = "queue",
+            AuthenticationMethod = AuthenticationMethod.URI,
+            ExchangeName = null,
+
+            AutoAck = ReadAckType.AutoReject,
+            ReadMessageCount = 1,
+        };
+
+        Publish(connection, 1);
+        var result = RabbitMQ.Read(connection);
+
+        Assert.IsTrue(result.MessagesBase64.Count == 1 && result.MessageUTF8.Count == 1 && result.Success.Equals(true));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0"))));
+
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("custom header"))));
+
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("custom header"))));
+    }
+
+    [TestMethod]
+    public void TestReadSingleMessageWithHostAutoRejectAndRequeue()
+    {
+        Connection connection = new()
+        {
+            Host = TestHost,
+            Username = "agent",
+            Password = "agent123",
+            RoutingKey = "queue",
+            QueueName = "queue",
+            AuthenticationMethod = AuthenticationMethod.Host,
+            ExchangeName = null,
+
+            AutoAck = ReadAckType.AutoRejectAndRequeue,
+            ReadMessageCount = 1,
+        };
+
+        Publish(connection, 1);
+        var result = RabbitMQ.Read(connection);
+
+        Assert.IsTrue(result.MessagesBase64.Count == 1 && result.MessageUTF8.Count == 1 && result.Success.Equals(true));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0"))));
+
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("custom header"))));
+
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("custom header"))));
+    }
+
+    /// <summary>
+    /// Connect with hostname and read multiple messages.
+    /// </summary>
+    [TestMethod]
+    public void TestReadMultipleMessagesWithHostAutoRejectAndRequeue()
+    {
+        Connection connection = new()
+        {
+            Host = TestHost,
+            Username = "agent",
+            Password = "agent123",
+            RoutingKey = "queue",
+            QueueName = "queue",
+            AuthenticationMethod = AuthenticationMethod.Host,
+            ExchangeName = null,
+
+            AutoAck = ReadAckType.AutoRejectAndRequeue,
+            ReadMessageCount = 2,
+        };
+
+        Publish(connection, 2);
+        var result = RabbitMQ.Read(connection);
+
+        var test1 = result.MessagesBase64.Count;
+        var test2 = result.MessageUTF8.Count;
+
+
+        Assert.IsTrue(result.MessagesBase64.Count > 1 && result.MessageUTF8.Count > 1 && result.Success.Equals(true));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDA=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 0")))
+            && result.MessagesBase64.Any(x => x.Data.Equals("VGVzdCBtZXNzYWdlIDE=") && result.MessageUTF8.Any(x => x.Data.Equals("Test message 1"))));
+
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessagesBase64.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessagesBase64.Any(x => x.Headers.ContainsValue("custom header"))));
+
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("application id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-AppId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("cluster id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Type") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content type"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Content-Encoding") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("content encoding"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-CorrelationId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("correlation id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-Expiration") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("100"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("X-MessageId") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("message id"))));
+        Assert.IsTrue(result.MessageUTF8.Any(x => x.Headers.ContainsKey("Custom-Header") && result.MessageUTF8.Any(x => x.Headers.ContainsValue("custom header"))));
+    }
+
+    /// <summary>
+    /// Connect with URI and read single message.
+    /// </summary>
+    [TestMethod]
+    public void TestReadSingleMessageWithURIAutoRejectAndRequeue()
+    {
+        Connection connection = new()
+        {
+            Host = TestUri,
+            RoutingKey = "queue",
+            QueueName = "queue",
+            AuthenticationMethod = AuthenticationMethod.URI,
+            ExchangeName = null,
+
+            AutoAck = ReadAckType.AutoRejectAndRequeue,
             ReadMessageCount = 1,
         };
 

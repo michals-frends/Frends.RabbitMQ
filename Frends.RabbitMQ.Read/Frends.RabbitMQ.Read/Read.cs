@@ -137,10 +137,9 @@ public class RabbitMQ
             {
                 if (header.Value.GetType() == typeof(byte[]))
                     allHeaders[header.Key] = Encoding.UTF8.GetString(header.Value as byte[]);
-                else 
+                else
                     allHeaders[header.Key] = header.Value.ToString();
             }
-            //basicProperties.Headers.ToList().ForEach(x => allHeaders[x.Key] = Encoding.UTF8.GetString(x.Value as byte[]));
 
         return allHeaders;
     }
