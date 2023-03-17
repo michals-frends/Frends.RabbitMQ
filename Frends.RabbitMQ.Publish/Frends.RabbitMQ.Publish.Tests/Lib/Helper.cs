@@ -49,7 +49,6 @@ internal class Helper
                         else
                             data[header.Key] = "";
                     }
-                        
                 }
                 readValues.Headers = data;
             }
