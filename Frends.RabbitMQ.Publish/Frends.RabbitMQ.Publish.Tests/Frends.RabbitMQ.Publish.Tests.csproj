@@ -19,5 +19,5 @@
   <ItemGroup>
     <ProjectReference Include="..\Frends.RabbitMQ.Publish\Frends.RabbitMQ.Publish.csproj" />
   </ItemGroup>
-
+	
 </Project>

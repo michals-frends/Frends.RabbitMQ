@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0] - 2023-03-14
+### Fixed
+- Fixed issue with connections left open after task's execution by implementing IDisposable in Connectionhelper class.
+
+### Added
+- Added support for quorum queues.
+- [Breaking] Added parameter for connection options to enable creating quorum queues.
+
 ## [1.1.0] - 2023-02-23
 ### Fixed
 - Fixed NullReferenceException when no headers are defined for the input object.
