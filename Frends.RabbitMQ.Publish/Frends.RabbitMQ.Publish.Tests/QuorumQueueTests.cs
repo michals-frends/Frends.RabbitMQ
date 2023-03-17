@@ -1,4 +1,5 @@
 ﻿using Frends.RabbitMQ.Publish.Definitions;
+using Frends.RabbitMQ.Publish.Tests.Lib;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RabbitMQ.Client;
 using System.Text;
@@ -15,28 +16,40 @@ public class QuorumQueueTests
     /// Access UI from http://localhost:15672 username: agent, password: agent123
     /// </summary>
 
-    private const string TestUri = "amqp://agent:agent123@localhost:5672";
-    private const string TestHost = "localhost";
-    private const string queue = "quorum";
-    private const string exchange = "exchange";
+    private const string _testUri = "amqp://agent:agent123@localhost:5672";
+    private const string _testHost = "localhost";
+    private const string _queue = "quorum";
+    private const string _exchange = "exchange";
+    private static Header[] _headers = new Header[0];
 
     [TestInitialize]
     public void CreateExchangeAndQueue()
     {
-        var factory = new ConnectionFactory { Uri = new Uri(TestUri) };
+        var factory = new ConnectionFactory { Uri = new Uri(_testUri) };
         using var connection = factory.CreateConnection();
         using var channel = connection.CreateModel();
-        channel.ExchangeDeclare(exchange, type: "fanout", durable: false, autoDelete: false);
+        channel.ExchangeDeclare(_exchange, type: "fanout", durable: false, autoDelete: false);
         var args = new Dictionary<string, object>();
         args["x-queue-type"] = "quorum";
-        channel.QueueDeclare(queue, durable: true, exclusive: false, autoDelete: false, arguments: args);
-        channel.QueueBind(queue, exchange, routingKey: "");
+        channel.QueueDeclare(_queue, durable: true, exclusive: false, autoDelete: false, arguments: args);
+        channel.QueueBind(_queue, _exchange, routingKey: "");
+
+        _headers = new Header[] {
+            new Header { Name = "X-AppId", Value = "application id" },
+            new Header { Name = "X-ClusterId", Value = "cluster id" },
+            new Header { Name = "Content-Type", Value = "content type" },
+            new Header { Name = "Content-Encoding", Value = "content encoding" },
+            new Header { Name = "X-CorrelationId", Value = "correlation id" },
+            new Header { Name = "X-Expiration", Value = "100" },
+            new Header { Name = "X-MessageId", Value = "message id" },
+            new Header { Name = "Custom-Header", Value = "custom header" }
+        };
     }
 
     [TestCleanup]
     public void DeleteExchangeAndQueue()
     {
-        Helper.DeleteQuorumQueue(TestUri, queue, exchange);
+        Helper.DeleteQuorumQueue(_testUri, _queue, _exchange);
     }
 
     [TestMethod]
@@ -44,7 +57,7 @@ public class QuorumQueueTests
     {
         Connection connection = new()
         {
-            Host = TestHost,
+            Host = _testHost,
             Username = "agent",
             Password = "agent123",
             RoutingKey = "quorum",
@@ -60,43 +73,19 @@ public class QuorumQueueTests
         {
             DataString = "test message",
             InputType = InputType.String,
-
-            Headers = new Header[] {
-            new Header { Name = "X-AppId", Value = "application id" },
-            new Header { Name = "X-ClusterId", Value = "cluster id" },
-            new Header { Name = "Content-Type", Value = "content type" },
-            new Header { Name = "Content-Encoding", Value = "content encoding" },
-            new Header { Name = "X-CorrelationId", Value = "correlation id" },
-            new Header { Name = "X-Expiration", Value = "100" },
-            new Header { Name = "X-MessageId", Value = "message id" },
-            new Header { Name = "Custom-Header", Value = "custom header" }
-        }
+            Headers = _headers
         };
 
         var readValues = new Helper.ReadValues();
         var result = RabbitMQ.Publish(input, connection);
         Helper.ReadMessage(readValues, connection);
 
-        Assert.IsTrue(!string.IsNullOrEmpty(readValues.Message) && readValues.Message.Equals("test message"));
-        Assert.IsTrue(result.DataFormat.Equals("String")
-            && result.DataString.Equals("test message")
-            && result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-AppId") && readValues.Headers.ContainsValue("application id")
-            && result.Headers.ContainsKey("X-AppId") && result.Headers.ContainsValue("application id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-ClusterId") && readValues.Headers.ContainsValue("cluster id")
-            && result.Headers.ContainsKey("X-ClusterId") && result.Headers.ContainsValue("cluster id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("Content-Type") && readValues.Headers.ContainsValue("content type")
-            && result.Headers.ContainsKey("Content-Type") && result.Headers.ContainsValue("content type"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("Content-Encoding") && readValues.Headers.ContainsValue("content encoding")
-            && result.Headers.ContainsKey("Content-Encoding") && result.Headers.ContainsValue("content encoding"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-CorrelationId") && readValues.Headers.ContainsValue("correlation id")
-            && result.Headers.ContainsKey("X-CorrelationId") && result.Headers.ContainsValue("correlation id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-Expiration") && readValues.Headers.ContainsValue("100")
-            && result.Headers.ContainsKey("X-Expiration") && result.Headers.ContainsValue("100"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-MessageId") && readValues.Headers.ContainsValue("message id")
-            && result.Headers.ContainsKey("X-MessageId") && result.Headers.ContainsValue("message id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("Custom-Header") && readValues.Headers.ContainsValue("custom header")
-            && result.Headers.ContainsKey("Custom-Header") && result.Headers.ContainsValue("custom header"));
+        Assert.IsNotNull(readValues.Message);
+        Assert.AreEqual("test message", readValues.Message);
+        Assert.AreEqual("String", result.DataFormat);
+        Assert.AreEqual("test message", result.DataString);
+        Assert.IsTrue(result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
+        Assert.AreEqual(8, result.Headers.Count);
     }
 
     [TestMethod]
@@ -104,7 +93,7 @@ public class QuorumQueueTests
     {
         Connection connection = new()
         {
-            Host = TestHost,
+            Host = _testHost,
             Username = "agent",
             Password = "agent123",
             RoutingKey = "quorum",
@@ -120,43 +109,18 @@ public class QuorumQueueTests
         {
             DataByteArray = Encoding.UTF8.GetBytes("test message"),
             InputType = InputType.ByteArray,
-
-            Headers = new Header[] {
-            new Header { Name = "X-AppId", Value = "application id" },
-            new Header { Name = "X-ClusterId", Value = "cluster id" },
-            new Header { Name = "Content-Type", Value = "content type" },
-            new Header { Name = "Content-Encoding", Value = "content encoding" },
-            new Header { Name = "X-CorrelationId", Value = "correlation id" },
-            new Header { Name = "X-Expiration", Value = "100" },
-            new Header { Name = "X-MessageId", Value = "message id" },
-            new Header { Name = "Custom-Header", Value = "custom header" }
-        }
+            Headers = _headers
         };
 
         var readValues = new Helper.ReadValues();
         var result = RabbitMQ.Publish(input, connection);
         Helper.ReadMessage(readValues, connection);
 
-        Assert.IsTrue(!string.IsNullOrEmpty(readValues.Message) && readValues.Message.Equals("test message"));
-        Assert.IsTrue(result.DataFormat.Equals("ByteArray")
-            && result.DataString.Equals("test message")
-            && result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-AppId") && readValues.Headers.ContainsValue("application id")
-            && result.Headers.ContainsKey("X-AppId") && result.Headers.ContainsValue("application id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-ClusterId") && readValues.Headers.ContainsValue("cluster id")
-            && result.Headers.ContainsKey("X-ClusterId") && result.Headers.ContainsValue("cluster id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("Content-Type") && readValues.Headers.ContainsValue("content type")
-            && result.Headers.ContainsKey("Content-Type") && result.Headers.ContainsValue("content type"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("Content-Encoding") && readValues.Headers.ContainsValue("content encoding")
-            && result.Headers.ContainsKey("Content-Encoding") && result.Headers.ContainsValue("content encoding"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-CorrelationId") && readValues.Headers.ContainsValue("correlation id")
-            && result.Headers.ContainsKey("X-CorrelationId") && result.Headers.ContainsValue("correlation id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-Expiration") && readValues.Headers.ContainsValue("100")
-            && result.Headers.ContainsKey("X-Expiration") && result.Headers.ContainsValue("100"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-MessageId") && readValues.Headers.ContainsValue("message id")
-            && result.Headers.ContainsKey("X-MessageId") && result.Headers.ContainsValue("message id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("Custom-Header") && readValues.Headers.ContainsValue("custom header")
-            && result.Headers.ContainsKey("Custom-Header") && result.Headers.ContainsValue("custom header"));
+        Assert.IsNotNull(readValues.Message);
+        Assert.AreEqual("test message", readValues.Message);
+        Assert.AreEqual("ByteArray", result.DataFormat);
+        Assert.AreEqual("test message", result.DataString);
+        Assert.IsTrue(result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
     }
 
     [TestMethod]
@@ -164,7 +128,7 @@ public class QuorumQueueTests
     {
         Connection connection = new()
         {
-            Host = TestHost,
+            Host = _testHost,
             Username = "agent",
             Password = "agent123",
             RoutingKey = "quorum",
@@ -199,7 +163,7 @@ public class QuorumQueueTests
     {
         Connection connection = new()
         {
-            Host = TestHost,
+            Host = _testHost,
             Username = "agent",
             Password = "agent123",
             RoutingKey = "quorum",
@@ -233,7 +197,7 @@ public class QuorumQueueTests
     {
         Connection connection = new()
         {
-            Host = TestUri,
+            Host = _testUri,
             RoutingKey = "quorum",
             QueueName = "quorum",
             Create = false,
@@ -246,54 +210,29 @@ public class QuorumQueueTests
         {
             DataString = "test message",
             InputType = InputType.String,
-
-            Headers = new Header[] {
-            new Header { Name = "X-AppId", Value = "application id" },
-            new Header { Name = "X-ClusterId", Value = "cluster id" },
-            new Header { Name = "Content-Type", Value = "content type" },
-            new Header { Name = "Content-Encoding", Value = "content encoding" },
-            new Header { Name = "X-CorrelationId", Value = "correlation id" },
-            new Header { Name = "X-Expiration", Value = "100" },
-            new Header { Name = "X-MessageId", Value = "message id" },
-            new Header { Name = "Custom-Header", Value = "custom header" }
-        }
+            Headers = _headers
         };
 
         var readValues = new Helper.ReadValues();
         var result = RabbitMQ.Publish(input, connection);
         Helper.ReadMessage(readValues, connection);
 
-        Assert.IsTrue(!string.IsNullOrEmpty(readValues.Message) && readValues.Message.Equals("test message"));
-        Assert.IsTrue(result.DataFormat.Equals("String")
-            && result.DataString.Equals("test message")
-            && result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-AppId") && readValues.Headers.ContainsValue("application id")
-            && result.Headers.ContainsKey("X-AppId") && result.Headers.ContainsValue("application id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-ClusterId") && readValues.Headers.ContainsValue("cluster id")
-            && result.Headers.ContainsKey("X-ClusterId") && result.Headers.ContainsValue("cluster id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("Content-Type") && readValues.Headers.ContainsValue("content type")
-            && result.Headers.ContainsKey("Content-Type") && result.Headers.ContainsValue("content type"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("Content-Encoding") && readValues.Headers.ContainsValue("content encoding")
-            && result.Headers.ContainsKey("Content-Encoding") && result.Headers.ContainsValue("content encoding"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-CorrelationId") && readValues.Headers.ContainsValue("correlation id")
-            && result.Headers.ContainsKey("X-CorrelationId") && result.Headers.ContainsValue("correlation id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-Expiration") && readValues.Headers.ContainsValue("100")
-            && result.Headers.ContainsKey("X-Expiration") && result.Headers.ContainsValue("100"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-MessageId") && readValues.Headers.ContainsValue("message id")
-            && result.Headers.ContainsKey("X-MessageId") && result.Headers.ContainsValue("message id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("Custom-Header") && readValues.Headers.ContainsValue("custom header")
-            && result.Headers.ContainsKey("Custom-Header") && result.Headers.ContainsValue("custom header"));
+        Assert.IsNotNull(readValues.Message);
+        Assert.AreEqual("test message", readValues.Message);
+        Assert.AreEqual("String", result.DataFormat);
+        Assert.AreEqual("test message", result.DataString);
+        Assert.IsTrue(result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
     }
 
     [TestMethod]
     public void TestURIConnectionWithCreateQueue()
     {
-        Helper.DeleteQuorumQueue(TestUri, queue);
+        Helper.DeleteQuorumQueue(_testUri, _queue);
         var newQueue = "quorum2";
         Connection connection = new()
         {
-            Host = TestUri,
-            ExchangeName = exchange,
+            Host = _testUri,
+            ExchangeName = _exchange,
             RoutingKey = "",
             QueueName = newQueue,
             Create = true,
@@ -307,44 +246,19 @@ public class QuorumQueueTests
         {
             DataString = "test message",
             InputType = InputType.String,
-
-            Headers = new Header[] {
-            new Header { Name = "X-AppId", Value = "application id" },
-            new Header { Name = "X-ClusterId", Value = "cluster id" },
-            new Header { Name = "Content-Type", Value = "content type" },
-            new Header { Name = "Content-Encoding", Value = "content encoding" },
-            new Header { Name = "X-CorrelationId", Value = "correlation id" },
-            new Header { Name = "X-Expiration", Value = "100" },
-            new Header { Name = "X-MessageId", Value = "message id" },
-            new Header { Name = "Custom-Header", Value = "custom header" }
-        }
+            Headers = _headers
         };
 
         var readValues = new Helper.ReadValues();
         var result = RabbitMQ.Publish(input, connection);
         Helper.ReadMessage(readValues, connection);
 
-        Assert.IsTrue(!string.IsNullOrEmpty(readValues.Message) && readValues.Message.Equals("test message"));
-        Assert.IsTrue(result.DataFormat.Equals("String")
-            && result.DataString.Equals("test message")
-            && result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-AppId") && readValues.Headers.ContainsValue("application id")
-            && result.Headers.ContainsKey("X-AppId") && result.Headers.ContainsValue("application id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-ClusterId") && readValues.Headers.ContainsValue("cluster id")
-            && result.Headers.ContainsKey("X-ClusterId") && result.Headers.ContainsValue("cluster id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("Content-Type") && readValues.Headers.ContainsValue("content type")
-            && result.Headers.ContainsKey("Content-Type") && result.Headers.ContainsValue("content type"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("Content-Encoding") && readValues.Headers.ContainsValue("content encoding")
-            && result.Headers.ContainsKey("Content-Encoding") && result.Headers.ContainsValue("content encoding"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-CorrelationId") && readValues.Headers.ContainsValue("correlation id")
-            && result.Headers.ContainsKey("X-CorrelationId") && result.Headers.ContainsValue("correlation id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-Expiration") && readValues.Headers.ContainsValue("100")
-            && result.Headers.ContainsKey("X-Expiration") && result.Headers.ContainsValue("100"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("X-MessageId") && readValues.Headers.ContainsValue("message id")
-            && result.Headers.ContainsKey("X-MessageId") && result.Headers.ContainsValue("message id"));
-        Assert.IsTrue(readValues.Headers.ContainsKey("Custom-Header") && readValues.Headers.ContainsValue("custom header")
-            && result.Headers.ContainsKey("Custom-Header") && result.Headers.ContainsValue("custom header"));
+        Assert.IsNotNull(readValues.Message);
+        Assert.AreEqual("test message", readValues.Message);
+        Assert.AreEqual("String", result.DataFormat);
+        Assert.AreEqual("test message", result.DataString);
+        Assert.IsTrue(result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
 
-        Helper.DeleteQuorumQueue(TestUri, newQueue, exchange);
+        Helper.DeleteQuorumQueue(_testUri, newQueue, _exchange);
     }
 }

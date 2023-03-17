@@ -2,7 +2,7 @@
 using System.Text;
 using Frends.RabbitMQ.Publish.Definitions;
 
-namespace Frends.RabbitMQ.Publish.Tests;
+namespace Frends.RabbitMQ.Publish.Tests.Lib;
 internal class Helper
 {
     internal static void ReadMessage(ReadValues readValues, Connection connection)
@@ -42,7 +42,14 @@ internal class Helper
                     if (header.Value.GetType() == typeof(byte[]))
                         data[header.Key] = Encoding.UTF8.GetString((byte[])header.Value);
                     else
-                        data[header.Key] = header.Value.ToString();
+                    {
+                        string? value = header.Value.ToString();
+                        if (!string.IsNullOrWhiteSpace(value))
+                            data[header.Key] = value;
+                        else
+                            data[header.Key] = "";
+                    }
+                        
                 }
                 readValues.Headers = data;
             }
