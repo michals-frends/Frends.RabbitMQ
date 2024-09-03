@@ -22,13 +22,17 @@ public class RabbitMQ
     /// <returns>Object { string DataFormat, string DataString, byte[] DataByteArray, Dictionary&lt;string, string&gt; Headers }</returns>
     public static Result Publish([PropertyTab] Input input, [PropertyTab] Connection connection)
     {
-        using var connectionHelper = new ConnectionHelper();
+        //using var connectionHelper = new ConnectionHelper();
 
         var dataType = input.InputType.Equals(InputType.ByteArray) ? "ByteArray" : "String";
         var data = input.InputType.Equals(InputType.ByteArray) ? input.DataByteArray : Encoding.UTF8.GetBytes(input.DataString);
         if (data.Length == 0) throw new ArgumentException("Publish: Message data is missing.");
 
-        OpenConnectionIfClosed(connectionHelper, connection);
+        //OpenConnectionIfClosed(connectionHelper, connection);
+
+        var rabbitSession = GetSession(connection);
+
+        var model = rabbitSession.Model;
 
         if (connection.Create)
         {
@@ -36,7 +40,7 @@ public class RabbitMQ
             var args = new Dictionary<string, object>();
             args.Add("x-queue-type", "quorum");
 
-            connectionHelper.AMQPModel.QueueDeclare(queue: connection.QueueName,
+            model.QueueDeclare(queue: connection.QueueName,
                 durable: connection.Durable,
                 exclusive: false,
                 autoDelete: connection.AutoDelete,
@@ -44,14 +48,14 @@ public class RabbitMQ
 
             if (!string.IsNullOrEmpty(connection.ExchangeName))
             {
-                connectionHelper.AMQPModel.QueueBind(queue: connection.QueueName,
+                model.QueueBind(queue: connection.QueueName,
                     exchange: connection.ExchangeName,
                     routingKey: connection.RoutingKey,
                     arguments: null);
             }
         }
 
-        var basicProperties = connectionHelper.AMQPModel.CreateBasicProperties();
+        var basicProperties = model.CreateBasicProperties();
         basicProperties.Persistent = connection.Durable;
         AddHeadersToBasicProperties(basicProperties, input.Headers);
 
@@ -61,7 +65,7 @@ public class RabbitMQ
             foreach (var head in basicProperties.Headers)
                 headers.Add(head.Key.ToString(), head.Value.ToString());
 
-        connectionHelper.AMQPModel.BasicPublish(exchange: connection.ExchangeName,
+        model.BasicPublish(exchange: connection.ExchangeName,
             routingKey: connection.RoutingKey,
             basicProperties: basicProperties,
             body: data);
@@ -75,11 +79,12 @@ public class RabbitMQ
     private static void OpenConnectionIfClosed(ConnectionHelper connectionHelper, Connection connection)
     {
         // Close connection if hostname has changed.
-        if (IsConnectionHostNameChanged(connectionHelper, connection))
+        /*if (IsConnectionHostNameChanged(connectionHelper, connection))
         {
             connectionHelper.AMQPModel.Close();
             connectionHelper.AMQPConnection.Close();
-        }
+        }*/
+        
 
         if (connectionHelper.AMQPConnection == null || connectionHelper.AMQPConnection.IsOpen == false)
         {
@@ -104,7 +109,7 @@ public class RabbitMQ
             }
 
             if (connection.Timeout != 0) factory.RequestedConnectionTimeout = TimeSpan.FromSeconds(connection.Timeout);
-
+            
             connectionHelper.AMQPConnection = factory.CreateConnection();
         }
 
@@ -112,7 +117,71 @@ public class RabbitMQ
             connectionHelper.AMQPModel = connectionHelper.AMQPConnection.CreateModel();
     }
 
-    private static bool IsConnectionHostNameChanged(ConnectionHelper connectionHelper, Connection connection)
+    public static RabbitSession GetSession(Connection connection)
+    {
+        var c = RabbitConnectionPool.GetConnection(connection.Host, factory =>
+        {
+            Console.WriteLine("Creating new connection");
+            
+            switch (connection.AuthenticationMethod)
+            {
+                case AuthenticationMethod.URI:
+                    factory.Uri = new Uri(connection.Host);
+                    break;
+                case AuthenticationMethod.Host:
+                    if (!string.IsNullOrWhiteSpace(connection.Username) ||
+                        !string.IsNullOrWhiteSpace(connection.Password))
+                    {
+                        factory.UserName = connection.Username;
+                        factory.Password = connection.Password;
+                    }
+
+                    factory.HostName = connection.Host;
+
+                    if (connection.Port != 0) factory.Port = connection.Port;
+
+                    break;
+            }
+
+            if (connection.Timeout != 0) factory.RequestedConnectionTimeout = TimeSpan.FromSeconds(connection.Timeout);
+
+            return factory.CreateConnection();
+        });
+
+        return c;
+    }
+
+    internal static Func<ConnectionFactory, IConnection> ConnectionFactory(ConnectionFactory factory,
+        Connection connection) => (connectionFactory =>
+    {
+        Console.WriteLine("Creating new connection");
+
+        switch (connection.AuthenticationMethod)
+        {
+            case AuthenticationMethod.URI:
+                factory.Uri = new Uri(connection.Host);
+                break;
+            case AuthenticationMethod.Host:
+                if (!string.IsNullOrWhiteSpace(connection.Username) ||
+                    !string.IsNullOrWhiteSpace(connection.Password))
+                {
+                    factory.UserName = connection.Username;
+                    factory.Password = connection.Password;
+                }
+
+                factory.HostName = connection.Host;
+
+                if (connection.Port != 0) factory.Port = connection.Port;
+
+                break;
+        }
+
+        if (connection.Timeout != 0) factory.RequestedConnectionTimeout = TimeSpan.FromSeconds(connection.Timeout);
+
+        return factory.CreateConnection();
+    });
+
+    /*private static bool IsConnectionHostNameChanged(ConnectionHelper connectionHelper, Connection connection)
     {
         // If no current connection, host name is not changed
         if (connectionHelper.AMQPConnection == null || connectionHelper.AMQPConnection.IsOpen == false)
@@ -128,7 +197,7 @@ public class RabbitMQ
             default:
                 throw new ArgumentException($"IsConnectionHostNameChanged: AuthenticationMethod missing.");
         }
-    }
+    }*/
 
     private static void AddHeadersToBasicProperties(IBasicProperties basicProperties, Header[] headers)
     {

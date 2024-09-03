@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Frends.RabbitMQ.Publish.Definitions;
 using Frends.RabbitMQ.Publish.Tests.Lib;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -255,5 +256,103 @@ public class UnitTests
         Assert.AreEqual("String", result.DataFormat);
         Assert.AreEqual("test message", result.DataString);
         Assert.IsTrue(result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
+    }
+    
+    [TestMethod]
+    public async Task TestBurstURIConnection()
+    {
+        var counter = 30;
+        
+        Connection connection = new()
+        {
+            Host = _testUri,
+            RoutingKey = _queue,
+            QueueName = _queue,
+            Create = false,
+            Durable = false,
+            AutoDelete = false,
+            AuthenticationMethod = AuthenticationMethod.URI,
+        };
+
+        var progress = new ConcurrentDictionary<int, (bool success, Exception? exception)>();
+        
+        var tasks = Enumerable.Range(0, counter)
+            .Select(count => Task.Factory.StartNew(() =>
+            {
+                try
+                {
+                    Input input = new() { DataString = "test message", InputType = InputType.String, Headers = _headers };
+
+                    var readValues = new Helper.ReadValues();
+                    var result = RabbitMQ.Publish(input, connection);
+                    Helper.ReadMessageFactory(readValues, connection);
+
+                    Assert.IsNotNull(readValues.Message);
+                    Assert.AreEqual("test message", readValues.Message);
+                    Assert.AreEqual("String", result.DataFormat);
+                    Assert.AreEqual("test message", result.DataString);
+                    Assert.IsTrue(result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
+
+                    progress[count] = (true, null);
+                }
+                catch (Exception e)
+                {
+                    progress[count] = (false, e);
+                }
+            }))
+            .ToList();
+
+        await Task.WhenAll(tasks);
+
+        Assert.IsTrue(progress.Count == counter, "Number of tasks were not completed");
+        Assert.IsTrue(progress.All(p => p.Value.success),
+            $@"Not all tasks were completed successfully: {string.Join(", ",progress.Where(pair => pair.Value.exception != null).Select(pair => pair.Value.exception!.Message) ) }");
+    }
+    
+    [TestMethod]
+    public async Task TestBurstForURIConnection()
+    {
+        var counter = 30;
+        
+        Connection connection = new()
+        {
+            Host = _testUri,
+            RoutingKey = _queue,
+            QueueName = _queue,
+            Create = false,
+            Durable = false,
+            AutoDelete = false,
+            AuthenticationMethod = AuthenticationMethod.URI,
+        };
+
+        var progress = new ConcurrentDictionary<int, (bool success, Exception? exception)>();
+        
+        foreach (var count in Enumerable.Range(0, counter))
+        {
+            try
+            {
+                Input input = new() { DataString = "test message", InputType = InputType.String, Headers = _headers };
+
+                //var readValues = new Helper.ReadValues();
+                var result = RabbitMQ.Publish(input, connection);
+                //Helper.ReadMessage(readValues, connection);
+
+                //Assert.IsNotNull(readValues.Message);
+                //Assert.AreEqual("test message", readValues.Message);
+                //Assert.AreEqual("String", result.DataFormat);
+                //Assert.AreEqual("test message", result.DataString);
+                //Assert.IsTrue(result.DataByteArray.SequenceEqual(Encoding.UTF8.GetBytes("test message")));
+
+                progress[count] = (true, null);
+            }
+            catch (Exception e)
+            {
+                progress[count] = (false, e);
+            }
+        }
+
+        Assert.IsTrue(progress.Count == counter, "Number of tasks were not completed");
+        Assert.IsTrue(progress.All(p => p.Value.success),
+            $@"Not all tasks were completed successfully: {string.Join(", ",progress.Where(pair => pair.Value.exception != null).Select(pair => pair.Value.exception!.Message) ) }");
     }
 }
